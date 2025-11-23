@@ -37,7 +37,8 @@ from . import mdp
 # Pre-defined configs
 ##
 
-from .ur_gripper import UR_GRIPPER_CFG  # isort:skip
+# from .ur_gripper import UR_GRIPPER_CFG  # isort:skip
+from .so101 import SO101_CFG  # isort:skip
 
 ##
 # Scene definition
@@ -55,7 +56,7 @@ class ReachSceneCfg(InteractiveSceneCfg):
     )
 
     # robot
-    robot = UR_GRIPPER_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+    robot = SO101_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
     
     # lights
     dome_light = AssetBaseCfg(
@@ -88,7 +89,7 @@ class ActionsCfg:
 
     arm_action: ActionTerm = mdp.JointPositionActionCfg(
         asset_name="robot", 
-        joint_names=["shoulder_pan_joint", "shoulder_lift_joint", "elbow_joint", "wrist_1_joint", "wrist_2_joint", "wrist_3_joint"], 
+        joint_names=["shoulder_pan", "shoulder_lift", "elbow_flex", "wrist_flex", "wrist_roll", "gripper"], 
         scale=.5, 
         use_default_offset=True, 
         debug_vis=True
@@ -100,14 +101,14 @@ class CommandsCfg:
 
     ee_pose = mdp.UniformPoseCommandCfg(
         asset_name="robot",
-        body_name="ee_link", # This is the body in the USD file
+        body_name="gripper_link", # This is the body in the USD file
         resampling_time_range=(4.0, 4.0),
         debug_vis=True,
         # These are essentially ranges of poses that can be commanded for the end of the robot during training
         ranges=mdp.UniformPoseCommandCfg.Ranges(
-            pos_x=(0.35, 0.65),
-            pos_y=(-0.2, 0.2),
-            pos_z=(0.15, 0.5),
+            pos_x=(0.1, 0.3),
+            pos_y=(-0.1, 0.17),
+            pos_z=(0.05, 0.2),
             roll=(0.0, 0.0),
             pitch=(math.pi / 2, math.pi / 2),
             yaw=(-3.14, 3.14),
@@ -143,7 +144,7 @@ class EventCfg:
         func=mdp.reset_joints_by_scale,
         mode="reset",
         params={
-            "position_range": (0.75, 1.25),
+            "position_range": (0.1, 0.5),
             "velocity_range": (0.0, 0.0),
         },
     )
@@ -158,19 +159,19 @@ class RewardsCfg:
     end_effector_orientation_tracking = RewTerm(
         func=mdp.orientation_command_error,
         weight=-0.1,
-        params={"asset_cfg": SceneEntityCfg("robot", body_names=["ee_link"]), "command_name": "ee_pose"},
+        params={"asset_cfg": SceneEntityCfg("robot", body_names=["gripper_link"]), "command_name": "ee_pose"},
     )
 
     # task terms
     end_effector_position_tracking = RewTerm(
         func=mdp.position_command_error,
         weight=-0.2,
-        params={"asset_cfg": SceneEntityCfg("robot", body_names=["ee_link"]), "command_name": "ee_pose"},
+        params={"asset_cfg": SceneEntityCfg("robot", body_names=["gripper_link"]), "command_name": "ee_pose"},
     )
     end_effector_position_tracking_fine_grained = RewTerm(
         func=mdp.position_command_error_tanh,
         weight=0.1,
-        params={"asset_cfg": SceneEntityCfg("robot", body_names=["ee_link"]), "std": 0.1, "command_name": "ee_pose"},
+        params={"asset_cfg": SceneEntityCfg("robot", body_names=["gripper_link"]), "std": 0.1, "command_name": "ee_pose"},
     )
     
     # action penalty
@@ -204,7 +205,7 @@ class ReachEnvCfg(ManagerBasedRLEnvCfg):
     """Configuration for the reach end-effector pose tracking environment."""
 
     # Scene settings - how many robots, how far apart?
-    scene = ReachSceneCfg(num_envs=2000, env_spacing=2.5)
+    scene = ReachSceneCfg(num_envs=450, env_spacing=2.5)
     # Basic settings
     observations = ObservationsCfg()
     actions = ActionsCfg()
